@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Taras Pis'ka</title>
+    <title>Projekt Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -12,58 +13,832 @@
         }
 
         body {
-            width: 100%;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: linear-gradient(135deg, #fff5e6 0%, #ffe8cc 100%);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: #f8f9fa;
+            color: #333;
         }
 
-        .container {
-            text-align: center;
-            padding: 40px;
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 20px;
-            box-shadow: 0 10px 40px rgba(255, 140, 0, 0.15);
-            backdrop-filter: blur(10px);
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         h1 {
-            font-size: 5rem;
-            color: #ff8c00;
-            font-weight: 700;
-            letter-spacing: 2px;
-            text-shadow: 0 2px 10px rgba(255, 140, 0, 0.2);
-            animation: fadeIn 1s ease-in;
+            font-size: 28px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
         }
 
-        @keyframes fadeIn {
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        button {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .quadrant {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            min-height: 400px;
+            transition: all 0.3s ease;
+        }
+
+        .quadrant:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-color: #667eea;
+        }
+
+        .quadrant-header {
+            padding: 16px;
+            border-bottom: 2px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .quadrant-title {
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .quadrant-count {
+            background: #667eea;
+            color: white;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .quadrant-content {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+            align-content: flex-start;
+        }
+
+        .project-card {
+            background: linear-gradient(135deg, #fff5f7 0%, #ffe8ed 100%);
+            border: 1px solid #ffdbeb;
+            border-radius: 10px;
+            padding: 14px;
+            cursor: move;
+            transition: all 0.2s ease;
+            position: relative;
+            user-select: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .project-card.dragging {
+            opacity: 0.7;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            transform: scale(1.05);
+        }
+
+        .project-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-color: #667eea;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .card-title {
+            font-weight: 600;
+            font-size: 13px;
+            line-height: 1.4;
+            flex: 1;
+            color: #333;
+        }
+
+        .card-industry {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .industry-tech { background: #e3f2fd; color: #1976d2; }
+        .industry-finance { background: #f3e5f5; color: #7b1fa2; }
+        .industry-healthcare { background: #e8f5e9; color: #388e3c; }
+        .industry-retail { background: #fff3e0; color: #f57c00; }
+        .industry-manufacturing { background: #fce4ec; color: #c2185b; }
+        .industry-energy { background: #e0f2f1; color: #00796b; }
+
+        .card-details {
+            font-size: 12px;
+            display: grid;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #666;
+        }
+
+        .detail-label {
+            font-weight: 500;
+        }
+
+        .detail-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .volume-value {
+            color: #2e7d32;
+            font-weight: 700;
+        }
+
+        .chance-value {
+            color: #1976d2;
+            font-weight: 700;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 10px;
+            border-top: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .people-badge {
+            background: #667eea;
+            color: white;
+            border-radius: 12px;
+            padding: 4px 10px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .card-btn {
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .card-btn:hover {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        .modal.show {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 32px;
+            border-radius: 16px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
             from {
+                transform: translateY(-50px);
                 opacity: 0;
-                transform: translateY(-20px);
             }
             to {
-                opacity: 1;
                 transform: translateY(0);
+                opacity: 1;
             }
         }
 
-        @media (max-width: 768px) {
-            h1 {
-                font-size: 3rem;
+        .modal-header {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+            padding: 0;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            flex: 1;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+            flex: 1;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .stats-container {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e0e0e0;
+        }
+
+        .stat-card {
+            padding: 16px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
             }
-            
-            .container {
-                padding: 30px 20px;
+
+            .quadrant-content {
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
             }
+        }
+
+        @media (max-width: 600px) {
+            .header-content {
+                flex-direction: column;
+                gap: 12px;
+                text-align: center;
+            }
+
+            .header-actions {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .main-container {
+                padding: 12px;
+            }
+
+            .dashboard-grid {
+                gap: 12px;
+            }
+
+            .quadrant-content {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-content {
+                padding: 20px;
+            }
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: #999;
+            text-align: center;
+        }
+
+        .empty-state i {
+            font-size: 32px;
+            margin-bottom: 12px;
+            color: #ddd;
+        }
+
+        .empty-state p {
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Taras Pis'ka</h1>
+    <div class="header">
+        <div class="header-content">
+            <h1>📊 Projekt Dashboard</h1>
+            <div class="header-actions">
+                <button onclick="openModal()">
+                    <i class="fas fa-plus"></i> Neues Projekt
+                </button>
+            </div>
+        </div>
     </div>
+
+    <div class="main-container">
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-label">Gesamt Projekte</div>
+                <div class="stat-value" id="statTotal">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Durchschnittliche Chance</div>
+                <div class="stat-value" id="statChance">0%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Gesamtes Volumen</div>
+                <div class="stat-value" id="statVolume">€0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Beteiligte Personen</div>
+                <div class="stat-value" id="statPeople">0</div>
+            </div>
+        </div>
+
+        <div style="margin-top: 24px;">
+            <div class="dashboard-grid">
+                <div class="quadrant" data-quadrant="0">
+                    <div class="quadrant-header">
+                        <div class="quadrant-title">
+                            <i class="fas fa-lightbulb" style="color: #f57c00;"></i>
+                            Idea & Chance
+                        </div>
+                        <div class="quadrant-count" id="count-0">0</div>
+                    </div>
+                    <div class="quadrant-content" id="quadrant-0"></div>
+                </div>
+
+                <div class="quadrant" data-quadrant="1">
+                    <div class="quadrant-header">
+                        <div class="quadrant-title">
+                            <i class="fas fa-handshake" style="color: #1976d2;"></i>
+                            Angebot
+                        </div>
+                        <div class="quadrant-count" id="count-1">0</div>
+                    </div>
+                    <div class="quadrant-content" id="quadrant-1"></div>
+                </div>
+
+                <div class="quadrant" data-quadrant="2">
+                    <div class="quadrant-header">
+                        <div class="quadrant-title">
+                            <i class="fas fa-briefcase" style="color: #388e3c;"></i>
+                            In Bearbeitung
+                        </div>
+                        <div class="quadrant-count" id="count-2">0</div>
+                    </div>
+                    <div class="quadrant-content" id="quadrant-2"></div>
+                </div>
+
+                <div class="quadrant" data-quadrant="3">
+                    <div class="quadrant-header">
+                        <div class="quadrant-title">
+                            <i class="fas fa-check-circle" style="color: #2e7d32;"></i>
+                            Abgeschlossen
+                        </div>
+                        <div class="quadrant-count" id="count-3">0</div>
+                    </div>
+                    <div class="quadrant-content" id="quadrant-3"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal für neues Projekt -->
+    <div id="projectModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>Neues Projekt</div>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="projectForm">
+                <div class="form-group">
+                    <label>Projektname</label>
+                    <input type="text" id="projectName" required placeholder="z.B. ERP System Implementierung">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Volumen (€)</label>
+                        <input type="number" id="projectVolume" required placeholder="50000">
+                    </div>
+                    <div class="form-group">
+                        <label>Chance (%)</label>
+                        <input type="number" id="projectChance" min="0" max="100" required placeholder="75">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Personen</label>
+                        <input type="number" id="projectPeople" min="1" required placeholder="5">
+                    </div>
+                    <div class="form-group">
+                        <label>Branche</label>
+                        <select id="projectIndustry" required>
+                            <option value="">-- Wählen Sie --</option>
+                            <option value="tech">💻 Technologie</option>
+                            <option value="finance">💰 Finanzen</option>
+                            <option value="healthcare">🏥 Gesundheitswesen</option>
+                            <option value="retail">🛍️ Einzelhandel</option>
+                            <option value="manufacturing">🏭 Fertigung</option>
+                            <option value="energy">⚡ Energie</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="projectStatus" required>
+                        <option value="0">Idea & Chance</option>
+                        <option value="1">Angebot</option>
+                        <option value="2">In Bearbeitung</option>
+                        <option value="3">Abgeschlossen</option>
+                    </select>
+                </div>
+
+                <div class="modal-buttons">
+                    <button type="button" class="btn-secondary" onclick="closeModal()">Abbrechen</button>
+                    <button type="submit" class="btn-primary">Projekt erstellen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Datenstruktur für Projekte
+        let projects = JSON.parse(localStorage.getItem('projects')) || [];
+
+        const industryIcons = {
+            tech: '💻',
+            finance: '💰',
+            healthcare: '🏥',
+            retail: '🛍️',
+            manufacturing: '🏭',
+            energy: '⚡'
+        };
+
+        const industryClasses = {
+            tech: 'industry-tech',
+            finance: 'industry-finance',
+            healthcare: 'industry-healthcare',
+            retail: 'industry-retail',
+            manufacturing: 'industry-manufacturing',
+            energy: 'industry-energy'
+        };
+
+        const statusNames = ['Idea & Chance', 'Angebot', 'In Bearbeitung', 'Abgeschlossen'];
+
+        let draggedCard = null;
+        let draggedIndex = null;
+
+        // Modal-Funktionen
+        function openModal() {
+            document.getElementById('projectModal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('projectModal').classList.remove('show');
+            document.getElementById('projectForm').reset();
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('projectModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+
+        // Formular absenden
+        document.getElementById('projectForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const newProject = {
+                id: Date.now(),
+                name: document.getElementById('projectName').value,
+                volume: parseInt(document.getElementById('projectVolume').value),
+                chance: parseInt(document.getElementById('projectChance').value),
+                people: parseInt(document.getElementById('projectPeople').value),
+                industry: document.getElementById('projectIndustry').value,
+                status: parseInt(document.getElementById('projectStatus').value)
+            };
+
+            projects.push(newProject);
+            saveProjects();
+            renderDashboard();
+            closeModal();
+        });
+
+        // Projekte speichern
+        function saveProjects() {
+            localStorage.setItem('projects', JSON.stringify(projects));
+        }
+
+        // Projekt löschen
+        function deleteProject(index) {
+            if (confirm('Sind Sie sicher, dass Sie dieses Projekt löschen möchten?')) {
+                projects.splice(index, 1);
+                saveProjects();
+                renderDashboard();
+            }
+        }
+
+        // Drag-and-Drop funktionen
+        function startDrag(e, index) {
+            draggedCard = e.target.closest('.project-card');
+            draggedIndex = index;
+            draggedCard.classList.add('dragging');
+        }
+
+        function endDrag() {
+            if (draggedCard) {
+                draggedCard.classList.remove('dragging');
+                draggedCard = null;
+                draggedIndex = null;
+            }
+        }
+
+        function allowDrop(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        }
+
+        function onDrop(e, quadrantId) {
+            e.preventDefault();
+            if (draggedIndex !== null) {
+                projects[draggedIndex].status = quadrantId;
+                saveProjects();
+                renderDashboard();
+            }
+            endDrag();
+        }
+
+        // Karte rendern
+        function renderCard(project, index) {
+            const industry = project.industry;
+            const industryClass = industryClasses[industry] || 'industry-tech';
+            const icon = industryIcons[industry] || '💼';
+
+            return `
+                <div class="project-card" draggable="true" 
+                     ondragstart="startDrag(event, ${index})" 
+                     ondragend="endDrag()">
+                    <div class="card-header">
+                        <div class="card-title">${project.name}</div>
+                        <div class="card-industry ${industryClass}">${icon}</div>
+                    </div>
+                    <div class="card-details">
+                        <div class="detail-row">
+                            <span class="detail-label">Volumen:</span>
+                            <span class="detail-value volume-value">€${project.volume.toLocaleString('de-DE')}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Chance:</span>
+                            <span class="detail-value chance-value">${project.chance}%</span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="people-badge">
+                            <i class="fas fa-users"></i> ${project.people}
+                        </div>
+                        <div class="card-actions">
+                            <button class="card-btn" onclick="deleteProject(${index})" title="Löschen">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Dashboard rendern
+        function renderDashboard() {
+            // Quadranten leeren
+            for (let i = 0; i < 4; i++) {
+                document.getElementById(`quadrant-${i}`).innerHTML = '';
+            }
+
+            // Projekte nach Status gruppieren
+            const grouped = [[], [], [], []];
+            projects.forEach((project, index) => {
+                grouped[project.status].push({ ...project, originalIndex: index });
+            });
+
+            // Projekte in Quadranten rendern
+            grouped.forEach((group, quadrantId) => {
+                const quadrantContent = document.getElementById(`quadrant-${quadrantId}`);
+                
+                if (group.length === 0) {
+                    quadrantContent.innerHTML = `
+                        <div class="empty-state" style="grid-column: 1 / -1;">
+                            <i class="fas fa-inbox"></i>
+                            <p>Keine Projekte</p>
+                        </div>
+                    `;
+                } else {
+                    group.forEach(project => {
+                        const html = renderCard(project, project.originalIndex);
+                        const div = document.createElement('div');
+                        div.innerHTML = html;
+                        quadrantContent.appendChild(div.firstElementChild);
+                    });
+                }
+
+                // Counter aktualisieren
+                document.getElementById(`count-${quadrantId}`).textContent = group.length;
+
+                // Drag-and-drop Zone
+                quadrantContent.addEventListener('dragover', allowDrop);
+                quadrantContent.addEventListener('drop', (e) => onDrop(e, quadrantId));
+            });
+
+            // Statistiken aktualisieren
+            updateStats();
+        }
+
+        // Statistiken aktualisieren
+        function updateStats() {
+            const total = projects.length;
+            const avgChance = total > 0 ? Math.round(projects.reduce((sum, p) => sum + p.chance, 0) / total) : 0;
+            const totalVolume = projects.reduce((sum, p) => sum + p.volume, 0);
+            const totalPeople = projects.reduce((sum, p) => sum + p.people, 0);
+
+            document.getElementById('statTotal').textContent = total;
+            document.getElementById('statChance').textContent = avgChance + '%';
+            document.getElementById('statVolume').textContent = '€' + totalVolume.toLocaleString('de-DE');
+            document.getElementById('statPeople').textContent = totalPeople;
+        }
+
+        // Initial rendern
+        renderDashboard();
+
+        // Demo-Daten (optional)
+        function addDemoData() {
+            projects = [
+                { id: 1, name: 'ERP-System Implementierung', volume: 150000, chance: 85, people: 8, industry: 'tech', status: 1 },
+                { id: 2, name: 'Cloud Migration', volume: 200000, chance: 92, people: 6, industry: 'tech', status: 2 },
+                { id: 3, name: 'Finanz-Dashboard', volume: 75000, chance: 60, people: 4, industry: 'finance', status: 0 },
+                { id: 4, name: 'Krankenhaus IT', volume: 300000, chance: 45, people: 10, industry: 'healthcare', status: 0 },
+                { id: 5, name: 'E-Commerce Plattform', volume: 120000, chance: 88, people: 7, industry: 'retail', status: 3 },
+                { id: 6, name: 'Produktionsoptimierung', volume: 180000, chance: 75, people: 9, industry: 'manufacturing', status: 1 }
+            ];
+            saveProjects();
+            renderDashboard();
+        }
+    </script>
 </body>
 </html>
