@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Projekt Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * {
             margin: 0;
@@ -71,12 +70,6 @@
             height: 8px;
             border-radius: 50%;
             background: #22c55e;
-            animation: pulse 2s infinite;
-        }
-
-        .status-dot.offline {
-            background: #ef4444;
-            animation: none;
         }
 
         .status-dot.syncing {
@@ -275,10 +268,6 @@
             border-radius: 10px;
         }
 
-        .quadrant-content::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(135deg, #ff7a2d 0%, #ff5c0a 100%);
-        }
-
         .project-card {
             background: rgba(26, 15, 10, 0.8);
             border: 1px solid rgba(255, 140, 66, 0.2);
@@ -333,7 +322,6 @@
             flex-shrink: 0;
             background: rgba(255, 140, 66, 0.1);
             border: 1px solid rgba(255, 140, 66, 0.2);
-            transition: all 0.2s ease;
         }
 
         .industry-tech { background: rgba(255, 140, 66, 0.15); border-color: #ff8c42; }
@@ -568,21 +556,11 @@
             box-shadow: 0 4px 16px rgba(255, 107, 26, 0.4) !important;
         }
 
-        .btn-primary:hover {
-            box-shadow: 0 6px 24px rgba(255, 107, 26, 0.6) !important;
-            background: linear-gradient(135deg, #ff9d5c 0%, #ff7d32 100%) !important;
-        }
-
         .btn-secondary {
             background: rgba(255, 140, 66, 0.1) !important;
             color: #f5e6d3 !important;
             flex: 1;
             border: 1px solid rgba(255, 140, 66, 0.2) !important;
-            box-shadow: none !important;
-        }
-
-        .btn-secondary:hover {
-            background: rgba(255, 140, 66, 0.15) !important;
             box-shadow: none !important;
         }
 
@@ -660,7 +638,7 @@
             <div class="header-actions">
                 <div class="status-indicator">
                     <div class="status-dot" id="statusDot"></div>
-                    <span id="statusText">Verbunden</span>
+                    <span id="statusText">Lokal gespeichert</span>
                 </div>
                 <button id="addBtn" type="button">
                     <i class="fas fa-plus"></i> Neues Projekt
@@ -801,13 +779,9 @@
     </div>
 
     <script>
-        const SUPABASE_URL = 'https://xilpcwefvlzttkjgvqrh.supabase.co';
-        const SUPABASE_KEY = 'DEIN_SUPABASE_ANON_KEY';
-        const STORAGE_KEY = 'projekt_dashboard_cache';
+        const STORAGE_KEY = 'projekt_dashboard_projects';
 
-        let supabase = null;
         let projects = [];
-        let isOnline = navigator.onLine;
         let draggedCard = null;
         let draggedIndex = null;
 
@@ -835,43 +809,40 @@
 
             if (!dot || !text) return;
 
-            dot.classList.remove('offline', 'syncing');
+            dot.classList.remove('syncing');
 
             if (syncing) {
                 dot.classList.add('syncing');
-                text.textContent = 'Synchronisiert...';
+                text.textContent = 'Speichert lokal...';
                 return;
             }
 
-            if (!supabase) {
-                dot.classList.add('offline');
-                text.textContent = 'Supabase nicht initialisiert';
-                return;
-            }
-
-            if (isOnline) {
-                text.textContent = 'Mit Supabase verbunden';
-            } else {
-                dot.classList.add('offline');
-                text.textContent = 'Offline (Cache aktiv)';
-            }
+            text.textContent = 'Lokal gespeichert';
         }
 
-        function saveToLocalCache() {
+        function saveProjects() {
             try {
+                updateStatus(true);
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
             } catch (error) {
-                console.warn('Lokaler Cache konnte nicht gespeichert werden:', error);
+                console.error('Fehler beim Speichern:', error);
+                alert('Fehler beim lokalen Speichern: ' + error.message);
+            } finally {
+                updateStatus(false);
             }
         }
 
-        function loadFromLocalCache() {
+        function loadProjects() {
             try {
+                updateStatus(true);
                 const raw = localStorage.getItem(STORAGE_KEY);
-                return raw ? JSON.parse(raw) : [];
+                projects = raw ? JSON.parse(raw) : [];
             } catch (error) {
-                console.warn('Lokaler Cache konnte nicht geladen werden:', error);
-                return [];
+                console.error('Fehler beim Laden:', error);
+                projects = [];
+            } finally {
+                renderDashboard();
+                updateStatus(false);
             }
         }
 
@@ -883,9 +854,7 @@
 
         function openModal() {
             const modal = document.getElementById('projectModal');
-            if (modal) {
-                modal.classList.add('show');
-            }
+            if (modal) modal.classList.add('show');
         }
 
         function closeModal() {
@@ -896,135 +865,34 @@
             if (form) form.reset();
         }
 
-        async function initSupabase() {
-            try {
-                if (!window.supabase || !window.supabase.createClient) {
-                    throw new Error('Die Supabase-Bibliothek wurde nicht geladen.');
-                }
-
-                if (!SUPABASE_KEY || SUPABASE_KEY === 'DEIN_SUPABASE_ANON_KEY') {
-                    throw new Error('Bitte ersetze DEIN_SUPABASE_ANON_KEY durch deinen echten Supabase Anon Key.');
-                }
-
-                const { createClient } = window.supabase;
-                supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-            } catch (error) {
-                console.error('Supabase-Initialisierung fehlgeschlagen:', error);
-                supabase = null;
-                alert(error.message);
-            }
-
-            updateStatus();
-        }
-
-        window.addEventListener('online', () => {
-            isOnline = true;
-            updateStatus();
-            loadProjects();
-        });
-
-        window.addEventListener('offline', () => {
-            isOnline = false;
-            updateStatus();
-            projects = loadFromLocalCache();
-            renderDashboard();
-        });
-
-        async function loadProjects() {
-            if (!supabase || !isOnline) {
-                projects = loadFromLocalCache();
-                renderDashboard();
-                updateStatus();
-                return;
-            }
-
-            try {
-                updateStatus(true);
-
-                const { data, error } = await supabase
-                    .from('projects')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-
-                if (error) throw error;
-
-                projects = data || [];
-                saveToLocalCache();
-                renderDashboard();
-            } catch (error) {
-                console.error('Fehler beim Laden aus Supabase:', error);
-                projects = loadFromLocalCache();
-                renderDashboard();
-                alert('Supabase konnte nicht geladen werden. Es werden lokale Cache-Daten angezeigt.');
-            } finally {
-                updateStatus();
-            }
-        }
-
-        async function createProject(event) {
+        function createProject(event) {
             event.preventDefault();
 
-            if (!supabase) {
-                alert('Supabase ist nicht korrekt initialisiert.');
-                return;
-            }
-
             const newProject = {
+                id: Date.now(),
                 name: document.getElementById('projectName').value.trim(),
                 volume: parseInt(document.getElementById('projectVolume').value, 10),
                 chance: parseInt(document.getElementById('projectChance').value, 10),
                 people: parseInt(document.getElementById('projectPeople').value, 10),
                 industry: document.getElementById('projectIndustry').value,
-                status: parseInt(document.getElementById('projectStatus').value, 10)
+                status: parseInt(document.getElementById('projectStatus').value, 10),
+                created_at: new Date().toISOString()
             };
 
-            try {
-                document.getElementById('submitBtn').disabled = true;
-                updateStatus(true);
-
-                const { error } = await supabase
-                    .from('projects')
-                    .insert([newProject]);
-
-                if (error) throw error;
-
-                await loadProjects();
-                closeModal();
-            } catch (error) {
-                console.error('Fehler beim Speichern:', error);
-                alert('Fehler beim Speichern: ' + error.message);
-            } finally {
-                document.getElementById('submitBtn').disabled = false;
-                updateStatus();
-            }
+            projects.unshift(newProject);
+            saveProjects();
+            renderDashboard();
+            closeModal();
         }
 
-        async function deleteProject(projectId) {
+        function deleteProject(projectId) {
             if (!confirm('Sind Sie sicher, dass Sie dieses Projekt löschen möchten?')) {
                 return;
             }
 
-            if (!supabase) {
-                alert('Supabase ist nicht korrekt initialisiert.');
-                return;
-            }
-
-            try {
-                updateStatus(true);
-
-                const { error } = await supabase
-                    .from('projects')
-                    .delete()
-                    .eq('id', projectId);
-
-                if (error) throw error;
-
-                await loadProjects();
-            } catch (error) {
-                alert('Fehler beim Löschen: ' + error.message);
-            } finally {
-                updateStatus();
-            }
+            projects = projects.filter(project => project.id !== projectId);
+            saveProjects();
+            renderDashboard();
         }
 
         function startDrag(e, index) {
@@ -1049,14 +917,8 @@
             e.dataTransfer.dropEffect = 'move';
         }
 
-        async function onDrop(e, quadrantId) {
+        function onDrop(e, quadrantId) {
             e.preventDefault();
-
-            if (!supabase) {
-                alert('Supabase ist nicht korrekt initialisiert.');
-                endDrag();
-                return;
-            }
 
             if (draggedIndex === null || draggedIndex >= projects.length) {
                 endDrag();
@@ -1069,23 +931,10 @@
                 return;
             }
 
-            try {
-                updateStatus(true);
-
-                const { error } = await supabase
-                    .from('projects')
-                    .update({ status: quadrantId })
-                    .eq('id', project.id);
-
-                if (error) throw error;
-
-                await loadProjects();
-            } catch (error) {
-                alert('Fehler beim Aktualisieren: ' + error.message);
-            } finally {
-                updateStatus();
-                endDrag();
-            }
+            projects[draggedIndex].status = quadrantId;
+            saveProjects();
+            renderDashboard();
+            endDrag();
         }
 
         function renderCard(project, index) {
@@ -1179,7 +1028,7 @@
             document.getElementById('statPeople').textContent = totalPeople;
         }
 
-        document.addEventListener('DOMContentLoaded', async () => {
+        document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('addBtn')?.addEventListener('click', openModal);
             document.getElementById('projectForm')?.addEventListener('submit', createProject);
 
@@ -1192,8 +1041,7 @@
                 });
             }
 
-            await initSupabase();
-            await loadProjects();
+            loadProjects();
         });
 
         window.closeModal = closeModal;
