@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Projekt Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * {
@@ -21,7 +20,6 @@
             min-height: 100vh;
         }
 
-        /* Header */
         .header {
             background: rgba(26, 15, 10, 0.8);
             backdrop-filter: blur(10px);
@@ -664,7 +662,7 @@
                     <div class="status-dot" id="statusDot"></div>
                     <span id="statusText">Verbunden</span>
                 </div>
-                <button onclick="openModal()" id="addBtn">
+                <button id="addBtn" type="button">
                     <i class="fas fa-plus"></i> Neues Projekt
                 </button>
             </div>
@@ -746,7 +744,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <div>✨ Neues Projekt</div>
-                <button class="close-btn" onclick="closeModal()">&times;</button>
+                <button class="close-btn" type="button" onclick="closeModal()">&times;</button>
             </div>
             <form id="projectForm">
                 <div class="form-group">
@@ -803,15 +801,15 @@
     </div>
 
     <script>
-        // Supabase Konfiguration
         const SUPABASE_URL = 'https://xilpcwefvlzttkjgvqrh.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpbHBjd2Vmdmx6dHRramd2cXJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjA1Mzg4NDUsImV4cCI6MjAzNjExNDg0NX0.MZVwVnBRLVWL0KuFRQKMkZfS5v4ORq7h5rjKqL8y_TE';
+        const SUPABASE_KEY = 'DEIN_SUPABASE_ANON_KEY';
+        const STORAGE_KEY = 'projekt_dashboard_cache';
 
-        const { createClient } = window.supabase;
-        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
+        let supabase = null;
         let projects = [];
         let isOnline = navigator.onLine;
+        let draggedCard = null;
+        let draggedIndex = null;
 
         const industryIcons = {
             tech: '💻',
@@ -831,26 +829,92 @@
             energy: 'industry-energy'
         };
 
-        let draggedCard = null;
-        let draggedIndex = null;
-
-        // Status-Indicator
         function updateStatus(syncing = false) {
             const dot = document.getElementById('statusDot');
             const text = document.getElementById('statusText');
-            
+
+            if (!dot || !text) return;
+
+            dot.classList.remove('offline', 'syncing');
+
             if (syncing) {
                 dot.classList.add('syncing');
-                dot.classList.remove('offline');
                 text.textContent = 'Synchronisiert...';
-            } else if (isOnline) {
-                dot.classList.remove('offline', 'syncing');
-                text.textContent = 'Verbunden';
+                return;
+            }
+
+            if (!supabase) {
+                dot.classList.add('offline');
+                text.textContent = 'Supabase nicht initialisiert';
+                return;
+            }
+
+            if (isOnline) {
+                text.textContent = 'Mit Supabase verbunden';
             } else {
                 dot.classList.add('offline');
-                dot.classList.remove('syncing');
-                text.textContent = 'Offline';
+                text.textContent = 'Offline (Cache aktiv)';
             }
+        }
+
+        function saveToLocalCache() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+            } catch (error) {
+                console.warn('Lokaler Cache konnte nicht gespeichert werden:', error);
+            }
+        }
+
+        function loadFromLocalCache() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                return raw ? JSON.parse(raw) : [];
+            } catch (error) {
+                console.warn('Lokaler Cache konnte nicht geladen werden:', error);
+                return [];
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text ?? '';
+            return div.innerHTML;
+        }
+
+        function openModal() {
+            const modal = document.getElementById('projectModal');
+            if (modal) {
+                modal.classList.add('show');
+            }
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('projectModal');
+            const form = document.getElementById('projectForm');
+
+            if (modal) modal.classList.remove('show');
+            if (form) form.reset();
+        }
+
+        async function initSupabase() {
+            try {
+                if (!window.supabase || !window.supabase.createClient) {
+                    throw new Error('Die Supabase-Bibliothek wurde nicht geladen.');
+                }
+
+                if (!SUPABASE_KEY || SUPABASE_KEY === 'DEIN_SUPABASE_ANON_KEY') {
+                    throw new Error('Bitte ersetze DEIN_SUPABASE_ANON_KEY durch deinen echten Supabase Anon Key.');
+                }
+
+                const { createClient } = window.supabase;
+                supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+            } catch (error) {
+                console.error('Supabase-Initialisierung fehlgeschlagen:', error);
+                supabase = null;
+                alert(error.message);
+            }
+
+            updateStatus();
         }
 
         window.addEventListener('online', () => {
@@ -862,60 +926,63 @@
         window.addEventListener('offline', () => {
             isOnline = false;
             updateStatus();
+            projects = loadFromLocalCache();
+            renderDashboard();
         });
 
-        // Projekte von Supabase laden
         async function loadProjects() {
+            if (!supabase || !isOnline) {
+                projects = loadFromLocalCache();
+                renderDashboard();
+                updateStatus();
+                return;
+            }
+
             try {
                 updateStatus(true);
+
                 const { data, error } = await supabase
                     .from('projects')
                     .select('*')
                     .order('created_at', { ascending: false });
 
                 if (error) throw error;
+
                 projects = data || [];
+                saveToLocalCache();
                 renderDashboard();
-                updateStatus();
             } catch (error) {
-                console.error('Fehler beim Laden:', error);
+                console.error('Fehler beim Laden aus Supabase:', error);
+                projects = loadFromLocalCache();
+                renderDashboard();
+                alert('Supabase konnte nicht geladen werden. Es werden lokale Cache-Daten angezeigt.');
+            } finally {
                 updateStatus();
             }
         }
 
-        function openModal() {
-            document.getElementById('projectModal').classList.add('show');
-        }
+        async function createProject(event) {
+            event.preventDefault();
 
-        function closeModal() {
-            document.getElementById('projectModal').classList.remove('show');
-            document.getElementById('projectForm').reset();
-        }
-
-        window.onclick = function(event) {
-            const modal = document.getElementById('projectModal');
-            if (event.target === modal) {
-                closeModal();
+            if (!supabase) {
+                alert('Supabase ist nicht korrekt initialisiert.');
+                return;
             }
-        }
-
-        document.getElementById('projectForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
 
             const newProject = {
-                name: document.getElementById('projectName').value,
-                volume: parseInt(document.getElementById('projectVolume').value),
-                chance: parseInt(document.getElementById('projectChance').value),
-                people: parseInt(document.getElementById('projectPeople').value),
+                name: document.getElementById('projectName').value.trim(),
+                volume: parseInt(document.getElementById('projectVolume').value, 10),
+                chance: parseInt(document.getElementById('projectChance').value, 10),
+                people: parseInt(document.getElementById('projectPeople').value, 10),
                 industry: document.getElementById('projectIndustry').value,
-                status: parseInt(document.getElementById('projectStatus').value)
+                status: parseInt(document.getElementById('projectStatus').value, 10)
             };
 
             try {
                 document.getElementById('submitBtn').disabled = true;
                 updateStatus(true);
 
-                const { data, error } = await supabase
+                const { error } = await supabase
                     .from('projects')
                     .insert([newProject]);
 
@@ -924,44 +991,57 @@
                 await loadProjects();
                 closeModal();
             } catch (error) {
+                console.error('Fehler beim Speichern:', error);
                 alert('Fehler beim Speichern: ' + error.message);
             } finally {
                 document.getElementById('submitBtn').disabled = false;
                 updateStatus();
             }
-        });
+        }
 
         async function deleteProject(projectId) {
-            if (confirm('Sind Sie sicher, dass Sie dieses Projekt löschen möchten?')) {
-                try {
-                    updateStatus(true);
-                    const { error } = await supabase
-                        .from('projects')
-                        .delete()
-                        .eq('id', projectId);
+            if (!confirm('Sind Sie sicher, dass Sie dieses Projekt löschen möchten?')) {
+                return;
+            }
 
-                    if (error) throw error;
-                    await loadProjects();
-                } catch (error) {
-                    alert('Fehler beim Löschen: ' + error.message);
-                } finally {
-                    updateStatus();
-                }
+            if (!supabase) {
+                alert('Supabase ist nicht korrekt initialisiert.');
+                return;
+            }
+
+            try {
+                updateStatus(true);
+
+                const { error } = await supabase
+                    .from('projects')
+                    .delete()
+                    .eq('id', projectId);
+
+                if (error) throw error;
+
+                await loadProjects();
+            } catch (error) {
+                alert('Fehler beim Löschen: ' + error.message);
+            } finally {
+                updateStatus();
             }
         }
 
         function startDrag(e, index) {
             draggedCard = e.target.closest('.project-card');
             draggedIndex = index;
-            draggedCard.classList.add('dragging');
+
+            if (draggedCard) {
+                draggedCard.classList.add('dragging');
+            }
         }
 
         function endDrag() {
             if (draggedCard) {
                 draggedCard.classList.remove('dragging');
-                draggedCard = null;
-                draggedIndex = null;
             }
+            draggedCard = null;
+            draggedIndex = null;
         }
 
         function allowDrop(e) {
@@ -971,25 +1051,41 @@
 
         async function onDrop(e, quadrantId) {
             e.preventDefault();
-            if (draggedIndex !== null && draggedIndex < projects.length) {
-                const project = projects[draggedIndex];
-                
-                try {
-                    updateStatus(true);
-                    const { error } = await supabase
-                        .from('projects')
-                        .update({ status: quadrantId })
-                        .eq('id', project.id);
 
-                    if (error) throw error;
-                    await loadProjects();
-                } catch (error) {
-                    alert('Fehler beim Update: ' + error.message);
-                } finally {
-                    updateStatus();
-                }
+            if (!supabase) {
+                alert('Supabase ist nicht korrekt initialisiert.');
+                endDrag();
+                return;
             }
-            endDrag();
+
+            if (draggedIndex === null || draggedIndex >= projects.length) {
+                endDrag();
+                return;
+            }
+
+            const project = projects[draggedIndex];
+            if (!project || project.status === quadrantId) {
+                endDrag();
+                return;
+            }
+
+            try {
+                updateStatus(true);
+
+                const { error } = await supabase
+                    .from('projects')
+                    .update({ status: quadrantId })
+                    .eq('id', project.id);
+
+                if (error) throw error;
+
+                await loadProjects();
+            } catch (error) {
+                alert('Fehler beim Aktualisieren: ' + error.message);
+            } finally {
+                updateStatus();
+                endDrag();
+            }
         }
 
         function renderCard(project, index) {
@@ -998,29 +1094,29 @@
             const icon = industryIcons[industry] || '💼';
 
             return `
-                <div class="project-card" draggable="true" 
-                     ondragstart="startDrag(event, ${index})" 
+                <div class="project-card" draggable="true"
+                     ondragstart="startDrag(event, ${index})"
                      ondragend="endDrag()">
                     <div class="card-header">
-                        <div class="card-title">${project.name}</div>
+                        <div class="card-title">${escapeHtml(project.name)}</div>
                         <div class="card-industry ${industryClass}">${icon}</div>
                     </div>
                     <div class="card-details">
                         <div class="detail-row">
                             <span class="detail-label">Volumen:</span>
-                            <span class="detail-value volume-value">€${project.volume.toLocaleString('de-DE')}</span>
+                            <span class="detail-value volume-value">€${Number(project.volume || 0).toLocaleString('de-DE')}</span>
                         </div>
                         <div class="detail-row">
                             <span class="detail-label">Chance:</span>
-                            <span class="detail-value chance-value">${project.chance}%</span>
+                            <span class="detail-value chance-value">${Number(project.chance || 0)}%</span>
                         </div>
                     </div>
                     <div class="card-footer">
                         <div class="people-badge">
-                            <i class="fas fa-users"></i> ${project.people}
+                            <i class="fas fa-users"></i> ${Number(project.people || 0)}
                         </div>
                         <div class="card-actions">
-                            <button class="card-btn" onclick="deleteProject(${project.id})" title="Löschen">
+                            <button class="card-btn" type="button" onclick="deleteProject(${project.id})" title="Löschen">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
@@ -1031,17 +1127,20 @@
 
         function renderDashboard() {
             for (let i = 0; i < 4; i++) {
-                document.getElementById(`quadrant-${i}`).innerHTML = '';
+                const container = document.getElementById(`quadrant-${i}`);
+                container.innerHTML = '';
             }
 
             const grouped = [[], [], [], []];
+
             projects.forEach((project, index) => {
-                grouped[project.status].push({ ...project, originalIndex: index });
+                const status = [0, 1, 2, 3].includes(project.status) ? project.status : 0;
+                grouped[status].push({ ...project, originalIndex: index });
             });
 
             grouped.forEach((group, quadrantId) => {
                 const quadrantContent = document.getElementById(`quadrant-${quadrantId}`);
-                
+
                 if (group.length === 0) {
                     quadrantContent.innerHTML = `
                         <div class="empty-state">
@@ -1059,8 +1158,8 @@
                 }
 
                 document.getElementById(`count-${quadrantId}`).textContent = group.length;
-                quadrantContent.addEventListener('dragover', allowDrop);
-                quadrantContent.addEventListener('drop', (e) => onDrop(e, quadrantId));
+                quadrantContent.ondragover = allowDrop;
+                quadrantContent.ondrop = (e) => onDrop(e, quadrantId);
             });
 
             updateStats();
@@ -1068,9 +1167,11 @@
 
         function updateStats() {
             const total = projects.length;
-            const avgChance = total > 0 ? Math.round(projects.reduce((sum, p) => sum + p.chance, 0) / total) : 0;
-            const totalVolume = projects.reduce((sum, p) => sum + p.volume, 0);
-            const totalPeople = projects.reduce((sum, p) => sum + p.people, 0);
+            const avgChance = total > 0
+                ? Math.round(projects.reduce((sum, p) => sum + Number(p.chance || 0), 0) / total)
+                : 0;
+            const totalVolume = projects.reduce((sum, p) => sum + Number(p.volume || 0), 0);
+            const totalPeople = projects.reduce((sum, p) => sum + Number(p.people || 0), 0);
 
             document.getElementById('statTotal').textContent = total;
             document.getElementById('statChance').textContent = avgChance + '%';
@@ -1078,9 +1179,27 @@
             document.getElementById('statPeople').textContent = totalPeople;
         }
 
-        // Initialisierung
-        updateStatus();
-        loadProjects();
+        document.addEventListener('DOMContentLoaded', async () => {
+            document.getElementById('addBtn')?.addEventListener('click', openModal);
+            document.getElementById('projectForm')?.addEventListener('submit', createProject);
+
+            const modal = document.getElementById('projectModal');
+            if (modal) {
+                modal.addEventListener('click', (event) => {
+                    if (event.target === modal) {
+                        closeModal();
+                    }
+                });
+            }
+
+            await initSupabase();
+            await loadProjects();
+        });
+
+        window.closeModal = closeModal;
+        window.deleteProject = deleteProject;
+        window.startDrag = startDrag;
+        window.endDrag = endDrag;
     </script>
 </body>
 </html>
